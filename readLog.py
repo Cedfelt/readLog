@@ -34,7 +34,7 @@ def getLogEntryFromDevice():
 if __name__ == '__main__':
 
     fefefe = splitBitStructIn32bits(bitStructIter)
-
+    logDict = {}
     # logEntry = getLogEntryFromDevice()
     logEntry = map(str, [1280263945, 6, 0, 1, 59456, 389930, 42618, 578,
                          3903, 0, 504870, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -47,5 +47,6 @@ if __name__ == '__main__':
         rawBits = BitArray('int:32=' + logE)
         ent = next(fefefe)
         b = rawBits.unpack(entryToFmtString(ent))
-        print {k[1]: v for (k, v) in zip(ent, b)}
-        print
+        logDict.update({k[1]: v for (k, v) in zip(ent, b)})
+    
+    print logDict
