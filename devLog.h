@@ -12,26 +12,10 @@
 ** COPYRIGHT    :  2007 TC.GROUP
 **
 *******************************************************************************/
-#include "scoretypes.h"
+//#include "scoretypes.h"
 
-// Version    Date          Comment
-// -----------------------------------------------------------------------------
-// 4          2007-06-21    Added bModPrecLow and bCorrect
-// 5          2007-06-26    Temp warning level 2 is removed
-// 6          2009-06-26    PSU log data added
-#define LOG_ENTRIES_EXPORTED    (120u)
-#define LOG_BUFFERS              (3u)
-#ifdef P51_PSUMON
-#define LOG_ENTRY_VERSION        (6u) 
-#else
-#define LOG_ENTRY_VERSION        (5u) 
-#endif
-#define ONE_SECOND              (1000u)
-#define ONE_SECOND_INV          (0.001)
-#define MIN_UPDATERATE          (3*ONE_SECOND)      // PTG Implementation needs about this
-//#define MIN_UPDATERATE          (30*ONE_SECOND)
-#define DEFAULT_UPDATE_RATE      (2*60*ONE_SECOND)  
-#define MAX_UPDATERATE          (2*60*60*ONE_SECOND)
+//#include "Shared/Params/Fw_New/log_ext_conf.h"
+
 
 #ifndef NUM_CHANNELS
 #define NUM_CHANNELS 4
@@ -46,7 +30,7 @@ typedef enum
 
 typedef struct tagDvcServBits
 {
-#ifdef _WIN32 // Bit fields is interpreted differently in WIN32 and SHARC environment
+#ifdef BAJS // Bit fields is interpreted differently in WIN32 and SHARC environment
   unsigned int  ucRes2        :8;  
   unsigned int  ucRes1        :8;  
   unsigned int  ucRes0        :8;  
@@ -96,7 +80,7 @@ typedef struct tagDvcServBits
 typedef struct tagChServBits
 {
 
-#ifdef _WIN32 // Bit fields is interpreted differently in WIN32 and SHARC environment
+#ifdef BAJS // Bit fields is interpreted differently in WIN32 and SHARC environment
   unsigned int  ucRes2        :8;
   unsigned int  ucRes1        :8;  
   unsigned int  ucRes0        :8;    
@@ -134,7 +118,7 @@ typedef struct tagStdHst
 
 typedef struct tagDvcMiscBits
 {
-#ifdef _WIN32 // Bit fields is interpreted differently in WIN32 and SHARC environment
+#ifdef BAJS // Bit fields is interpreted differently in WIN32 and SHARC environment
 /*  unsigned int  ucRes2        :8;  
   unsigned int  ucRes1        :8;  
 */
@@ -234,7 +218,7 @@ typedef struct tagGlobLogEntry
   unsigned int  uiAccEntry;    // Consecutive entry number
   unsigned int  uiAccTFault;  // Total number of temperature faults
   unsigned int  uiAccAssert;  // Total number of asserts
-  unsigned int   uiLifeMaxT;    // Lifetime highest temperature
+  unsigned int   uiLifeMaxT;    // Lifetime highest temperature 12
   
   // Histograms (40 bytes)
   StdHst        hstPsmT;      // Temperature histogram (not implemented)
@@ -242,7 +226,7 @@ typedef struct tagGlobLogEntry
  
   // Statistical (12 bytes)
 #ifdef P51_PSUMON
-  #ifdef _WIN32 // Bit fields is interpreted differently in WIN32 and SHARC environment
+  #ifdef BAJS // Bit fields is interpreted differently in WIN32 and SHARC environment
   unsigned int  uiPsuMaxMainsCurr:  8;  // Old PAL0:8 - Max PSU mains RMS input current in percent of max (42A)
   unsigned int  uiPsuMinMainsVolt:  8;  // Old PAL0:8 - Min PSU mains RMS input voltage in Volt
   unsigned int  uiPsuAvgMainsVolt:  8;  // Old PAL0:8 - Average PSU mains RMS input voltage in Volt
@@ -277,7 +261,7 @@ typedef struct tagGlobLogEntry
   
   // Statistical (4 bytes)
 
-#ifdef _WIN32 // Bit fields is interpreted differently in WIN32 and SHARC environment
+#ifdef BAJS // Bit fields is interpreted differently in WIN32 and SHARC environment
   unsigned int  ucAvgP         :8;// Average power
   unsigned int  ucMaxP         :8;// Maximum power
   unsigned int   ucPsmAvgTemp   :8;// Average PSM temperature    
@@ -290,12 +274,14 @@ typedef struct tagGlobLogEntry
 #endif  
 
   // Bits (4 bytes)
-#ifdef _WIN32 
-  unsigned int  Res            :31;
+#ifdef BAJS 
+  unsigned int  accWatisar     :8;
+  unsigned int  Res            :23;
   unsigned int  bMsrInp        :1;  // Load monitor measurement in progress
 #else    
   unsigned int  bMsrInp        :1;
-  unsigned int  Res            :31;  
+  unsigned int  Res            :23;  
+  unsigned int  accWatisar     :8;
 #endif
     
   // Service (4 bytes)
@@ -310,7 +296,7 @@ typedef struct tagGlobLogEntry
 typedef struct tagChLogEntry
 {
   // Statistical (16 bytes)
-#ifdef _WIN32 // Bit fields is interpreted differently in WIN32 and SHARC environment
+#ifdef BAJS // Bit fields is interpreted differently in WIN32 and SHARC environment
   unsigned int  ucAvgV      :8;// Average voltage
   unsigned int  ucPeakV      :8;// Peak voltage
   unsigned int  ucAvgT      :8;// Average temperature
@@ -323,13 +309,21 @@ typedef struct tagChLogEntry
 
   unsigned int  ucThermHR   :8;// Thermal headroom
   unsigned int  ucPeakHR     :8;// Peak thermal headroom
+#ifdef USE_LML_SPEAKERSAFE
   unsigned int  ucAvgVC     :8;// Average voice coil temperature
   unsigned int  ucMaxVC     :8;// Max voice coil temperature
 
   unsigned int  ucAvgMag    :8;// Average magnet temperature
   unsigned int  ucMaxMag    :8;// Max magnet temperature
-  unsigned int  ucMinAvgZ   :8;// Minimum average impedance
-  unsigned int  ucMaxAvgZ   :8;// Maximum average impedance
+#else
+  unsigned int  ucAvgVC_unused :8;// Average voice coil temperature
+  unsigned int  ucMaxVC_unused :8;// Max voice coil temperature
+
+  unsigned int  ucMinAvgZ_H :8;// Upper word of minimum average impedance.  Scaled up by 10.
+  unsigned int  ucMaxAvgZ_H :8;// Upper word of maximum average impedance.  Scaled up by 10.
+#endif
+  unsigned int  ucMinAvgZ   :8;// Minimum average impedance. Scaled up by 10.
+  unsigned int  ucMaxAvgZ   :8;// Maximum average impedance. Scaled up by 10.
 #else
   unsigned int  ucPeakT      :8;
   unsigned int  ucAvgT      :8;
@@ -341,17 +335,27 @@ typedef struct tagChLogEntry
   unsigned int  ucMaxP       :8;
   unsigned int  ucAvgP       :8;
 
+#ifdef USE_LML_SPEAKERSAFE
   unsigned int  ucMaxVC     :8;
   unsigned int  ucAvgVC     :8;
+#else
+  unsigned int  ucMaxVC_unused     :8;
+  unsigned int  ucAvgVC_unused     :8;
+#endif
   unsigned int  ucPeakHR     :8;
   unsigned int  ucThermHR   :8;
 
   unsigned int  ucMaxAvgZ   :8;
   unsigned int  ucMinAvgZ   :8;
+#ifdef USE_LML_SPEAKERSAFE
   unsigned int  ucMaxMag    :8;
   unsigned int  ucAvgMag    :8;
+#else
+  unsigned int  ucMaxAvgZ_H :8;
+  unsigned int  ucMinAvgZ_H :8;
+#endif // USE_LML_SPEAKERSAFE
 #endif
-#ifdef _WIN32 // Bit fields is interpreted differently in WIN32 and SHARC environment
+#ifdef BAJS // Bit fields is interpreted differently in WIN32 and SHARC environment
   unsigned int  bRes10          :1;  
   unsigned int  bRes9            :1;
   unsigned int  bRes8            :1;
@@ -361,7 +365,7 @@ typedef struct tagChLogEntry
   unsigned int  bRes4            :1;    
   unsigned int  bRes3            :1;    
   
-  unsigned int  bLiveNotStarted  :1;
+  unsigned int  bLoadPilotActive  :1;
   unsigned int  bShortc          :1;// Short circuit
   unsigned int  bRes12          :1;// Sw-PAL
   unsigned int  bACL            :1;
@@ -372,8 +376,13 @@ typedef struct tagChLogEntry
 
   unsigned int  bNotvLoad        :1;// Load not verified 
   unsigned int  bUncLoad        :1;// Uncertain about load
+#ifdef USE_LML_SPEAKERSAFE
   unsigned int  bSmTempW        :1;// Speaker magnet temperature warning
   unsigned int  bVcTempW        :1;// Voice coil temperature warning
+#else
+  unsigned int  bSpkrShortedW        :1;// Speaker shorted
+  unsigned int  bSpkrDamagedW        :1;// Speaker damaged
+#endif
   unsigned int  bMoreSpkr        :1;// More speakers
   unsigned int  bRes11          :1;// Former Amplifier temperature warning level 2
   unsigned int  bTempW1          :1;// Amplifier temperature warning  
@@ -401,8 +410,13 @@ typedef struct tagChLogEntry
   unsigned int  bTempW1          :1;
   unsigned int  bRes11          :1;
   unsigned int  bMoreSpkr        :1;
+#ifdef USE_LML_SPEAKERSAFE
   unsigned int  bVcTempW        :1;
   unsigned int  bSmTempW        :1;
+#else
+  unsigned int  bSpkrDamagedW        :1;
+  unsigned int  bSpkrShortedW        :1;
+#endif
   unsigned int  bUncLoad        :1;
   unsigned int  bNotvLoad        :1;//_
   unsigned int  bNoLdPrst        :1;
@@ -412,7 +426,7 @@ typedef struct tagChLogEntry
   unsigned int  bACL            :1;
   unsigned int  bRes12          :1;
   unsigned int  bShortc          :1;
-  unsigned int  bLiveNotStarted  :1;//_
+  unsigned int  bLoadPilotActive  :1;//_
   unsigned int  bRes3            :1;
   unsigned int  bRes4            :1;
   unsigned int  bRes5            :1;
@@ -436,12 +450,12 @@ typedef struct tagChLogEntry
   
   // PTG implementation changes - Need a new impedance reading that supports at least the range 1-600 ohm
 //  unsigned int  Res0;
-#ifdef _WIN32 // Bit fields is interpreted differently in WIN32 and SHARC environment
-  unsigned int  usPtgZ          :16;  // Measured load impedance  where 1-60000 corresponds to 0.1-6000.0 ohm
-  unsigned int  usRes0          :16;
+#ifdef BAJS // Bit fields is interpreted differently in WIN32 and SHARC environment
+  unsigned int  usPtgZ0          :16;  // Measured load impedance  where 1-60000 corresponds to 0.1-6000.0 ohm
+  unsigned int  usPtgZ1          :16;
 #else
-  unsigned int  usRes0          :16;
-  unsigned int  usPtgZ          :16;  // Measured load impedance  where 1-60000 corresponds to 0.1-6000.0 ohm
+  unsigned int  usPtgZ1          :16;
+  unsigned int  usPtgZ0          :16;  // Measured load impedance  where 1-60000 corresponds to 0.1-6000.0 ohm
 #endif
   unsigned int  Res1;
 } ChLogEntry;                // 80 bytes
@@ -449,7 +463,7 @@ typedef struct tagChLogEntry
 
 typedef struct tagDvcDebug
 {
-#ifdef _WIN32 // Bit fields is interpreted differently in WIN32 and SHARC environment
+#ifdef BAJS // Bit fields is interpreted differently in WIN32 and SHARC environment
   unsigned int  ucRes3            :8;  
   unsigned int  ucRes2            :8;  
   unsigned int  ucRes1            :8;  
@@ -479,7 +493,7 @@ typedef struct tagDvcDebug
 
 typedef struct tagLogEntry
 {
-#ifdef _WIN32 // Bit fields is interpreted differently in WIN32 and SHARC environment
+#ifdef BAJS // Bit fields is interpreted differently in WIN32 and SHARC environment
   unsigned int ucChksum  :8;  // Checksum
   unsigned int ucTag2    :8;  // 'G'
   unsigned int ucTag1    :8;  // 'O'
@@ -502,7 +516,6 @@ typedef struct tagLogEntry
 } LogEntry;                  // 448 bytes in total
 
 
-int LOG_Scheduler(void* pThis);
 void LOG_Init(void* pThis);
 void LOG_ForceEntry(void* pThis);
 void LOG_SetUpdateRate(unsigned int uiUpdateRate, void* pThis);
@@ -513,8 +526,6 @@ void LOG_CreateServiceTag(void);
 #ifdef P51_PSUMON
 void LOG_DisableSessionLogging();
 #endif
-
-#define sizeOfDvcDebug sizeof(DvcDebug)
 
 #endif //__DEVLOG_H__
 
