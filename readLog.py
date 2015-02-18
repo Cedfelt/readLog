@@ -1,7 +1,15 @@
 # from lakeffi_util import LakeAPI
 # from time import sleep
 from bitstring import BitArray
-from bitStruct import bitStructIter
+from bitStruct import bitStructIter, bitStruct
+from collections import OrderedDict
+from lakeapi.lakepp import LakePP
+
+
+def test_bitStruct(bitStruct):
+    summa = sum([x[2] for x in bitStruct])
+    assert(summa % 32 == 0)
+    assert(summa / 32 == 112)
 
 
 def splitBitStructIn32bits(bitStruct):
@@ -25,28 +33,33 @@ def entryToFmtString(entry):
 
 
 def getLogEntryFromDevice():
-    p = LakeAPI("127.0.0.1", "BEE7ACE5:55E78008")
-    p = LakeAPI("169.254.166.60", "D3000015:6B44ED00")
+    # amp = LakePP("169.254.166.60", "d3000015:6b44ed00")
+    amp = LakePP("127.0.0.1", "BEE7ACE5:55E78008")
 
-    return p.p20_peek(0x73412, 112)
+    logEnteryBaseAddr = 0x70002
+    logEnteryAddrRange = range(logEnteryBaseAddr, (logEnteryBaseAddr + 112))
+
+    return [amp.read_param(a)[0] for a in logEnteryAddrRange]
 
 
 if __name__ == '__main__':
 
+    test_bitStruct(bitStruct)
+
     fefefe = splitBitStructIn32bits(bitStructIter)
-    logDict = {}
-    # logEntry = getLogEntryFromDevice()
-    logEntry = map(str, [1280263945, 6, 0, 1, 59456, 389930, 42618, 578,
-                         3903, 0, 504870, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                         0, -1229605884, 73293312, 394248, 269484032, 0,
-                         0, 33554432, 387317760, 0, 5910, 0, 0, 0, 268,
-                         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 387383296,
-                         0, 5911, 0, 0, 0, 187, 0, 0])
+    logDict = OrderedDict()
+    logEntry = map(str, getLogEntryFromDevice())
+    assert(len(logEntry) == 112)
+    print logEntry
 
     for logE in logEntry:
         rawBits = BitArray('int:32=' + logE)
         ent = next(fefefe)
         b = rawBits.unpack(entryToFmtString(ent))
-        logDict.update({k[1]: v for (k, v) in zip(ent, b)})
-    
+        for (k, v) in zip(ent, b):
+            logDict[k[1]] = v
+
     print logDict
+    print logDict['global.accWatisar']
+    print logDict['ChLogEntry_ChB.usPtgZ0']
+    print logDict['ChLogEntry_ChB.usPtgZ1']
