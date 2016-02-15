@@ -4,6 +4,7 @@ from bitstring import BitArray
 from bitStruct import bitStructIter, bitStruct
 from collections import OrderedDict
 from lakeapi.lakepp import LakePP
+import time
 
 
 def test_bitStruct(bitStruct):
@@ -40,7 +41,8 @@ def getLogEntryFromDevice(le_index=120):
     assert(0 < le_index <= 120)  # First index is 1 (not 0)
     
     # amp = LakePP("169.254.166.60", "d3000015:6b44ed00")
-    amp = LakePP("127.0.0.1", "BEE7ACE5:55E78008")
+    # amp = LakePP("127.0.0.1", "BEE7ACE5:55E78008")
+    amp = LakePP("169.254.97.224")
 
     le_NumberOfEnts  = 120
     le_Length        = 112
@@ -49,7 +51,8 @@ def getLogEntryFromDevice(le_index=120):
     le_AddrRange     = range(le_ToRead, (le_ToRead + le_Length))
     assert(le_AddrRange[-1] == 0x073481)
 
-    return [amp.read_param(a)[0] for a in le_AddrRange]
+    #return amp.read_params(hex(le_ToRead), le_Length)
+    return [amp.read_param(hex(a)) for a in le_AddrRange]
 
 
 def test_ValidLogDict(logDict):
@@ -61,29 +64,53 @@ if __name__ == '__main__':
 
     test_bitStruct(bitStruct)
 
-    fefefe = splitBitStructIn32bits(bitStructIter)
-    logDict = OrderedDict()
-    logEntry = map(str, getLogEntryFromDevice())
-    assert(len(logEntry) == 112)
+    for _ in range(1):
+        fefefe = splitBitStructIn32bits(bitStruct)
+        logDict = OrderedDict()
+        logEntry = map(str, getLogEntryFromDevice())
+        assert(len(logEntry) == 112)
 
-    for logE in logEntry:
-        rawBits = BitArray('int:32=' + logE)
-        ent = next(fefefe)
-        b = rawBits.unpack(entryToFmtString(ent))
-        for (k, v) in zip(ent, b):
-            logDict[k[1]] = v
+        for logE in logEntry:
+            rawBits = BitArray('int:32=' + logE)
+            ent = next(fefefe)
+            b = rawBits.unpack(entryToFmtString(ent))
+            for (k, v) in zip(ent, b):
+                logDict[k[1]] = v
 
-    test_ValidLogDict(logDict)
-    # print logDict
-    print 'ucChksum: ', logDict['ucChksum']
-    print 'uiTimestamp: ', logDict['uiTimestamp']
-    print 'global.accWatisar: ', logDict['global.accWatisar']
-    print 'ChLogEntry_ChA.usPtgZ0: ', logDict['ChLogEntry_ChA.usPtgZ0']
-    print 'ChLogEntry_ChA.usPtgZ1: ', logDict['ChLogEntry_ChA.usPtgZ1']
-    print 'ChLogEntry_ChB.usPtgZ0: ', logDict['ChLogEntry_ChB.usPtgZ0']
-    print 'ChLogEntry_ChB.usPtgZ1: ', logDict['ChLogEntry_ChB.usPtgZ1']
-    print 'ChLogEntry_ChC.usPtgZ0: ', logDict['ChLogEntry_ChC.usPtgZ0']
-    print 'ChLogEntry_ChC.usPtgZ1: ', logDict['ChLogEntry_ChC.usPtgZ1']
-    print 'ChLogEntry_ChD.usPtgZ0: ', logDict['ChLogEntry_ChD.usPtgZ0']
-    print 'ChLogEntry_ChD.usPtgZ1: ', logDict['ChLogEntry_ChD.usPtgZ1']
+        test_ValidLogDict(logDict)
+        # print logDict
+        print 'ucChksum: ', hex(logDict['ucChksum'])
+        print 'ucVer: ', logDict['ucVer']
+        print 'uiTimestamp: ', logDict['uiTimestamp']
+        print 'global.accWatisar: ', logDict['global.accWatisar']
+        print 'ChLogEntry_ChA.ucThermHR: ', logDict['ChLogEntry_ChA.ucThermHR']
+        print 'ChLogEntry_ChA.usMinLoadZ0: ', logDict['ChLogEntry_ChA.usMinLoadZ0']
+        print 'ChLogEntry_ChA.usMaxLoadZ0: ', logDict['ChLogEntry_ChA.usMaxLoadZ0']
+        print 'ChLogEntry_ChA.usMinLoadZ1: ', logDict['ChLogEntry_ChA.usMinLoadZ1']
+        print 'ChLogEntry_ChA.usMaxLoadZ1: ', logDict['ChLogEntry_ChA.usMaxLoadZ1']
+        print ''
+        print 'ChLogEntry_ChB.usMinLoadZ0: ', logDict['ChLogEntry_ChB.usMinLoadZ0']
+        print 'ChLogEntry_ChB.usMaxLoadZ0: ', logDict['ChLogEntry_ChB.usMaxLoadZ0']
+        print 'ChLogEntry_ChB.usMinLoadZ1: ', logDict['ChLogEntry_ChB.usMinLoadZ1']
+        print 'ChLogEntry_ChB.usMaxLoadZ1: ', logDict['ChLogEntry_ChB.usMaxLoadZ1']
+        print ''
+        print 'ChLogEntry_ChC.usMinLoadZ0: ', logDict['ChLogEntry_ChC.usMinLoadZ0']
+        print 'ChLogEntry_ChC.usMaxLoadZ0: ', logDict['ChLogEntry_ChC.usMaxLoadZ0']
+        print 'ChLogEntry_ChC.usMinLoadZ1: ', logDict['ChLogEntry_ChC.usMinLoadZ1']
+        print 'ChLogEntry_ChC.usMaxLoadZ1: ', logDict['ChLogEntry_ChC.usMaxLoadZ1']
+        print ''
+        print 'ChLogEntry_ChD.usMinLoadZ0: ', logDict['ChLogEntry_ChD.usMinLoadZ0']
+        print 'ChLogEntry_ChD.usMaxLoadZ0: ', logDict['ChLogEntry_ChD.usMaxLoadZ0']
+        print 'ChLogEntry_ChD.usMinLoadZ1: ', logDict['ChLogEntry_ChD.usMinLoadZ1']
+        print 'ChLogEntry_ChD.usMaxLoadZ1: ', logDict['ChLogEntry_ChD.usMaxLoadZ1']
+        # print 'ChLogEntry_ChC.usMinLoadZ0: ', logDict['ChLogEntry_ChC.usMinLoadZ0']
+        # print 'ChLogEntry_ChC.usMaxLoadZ0: ', logDict['ChLogEntry_ChC.usMaxLoadZ0']
+        # print 'ChLogEntry_ChD.usMinLoadZ0: ', logDict['ChLogEntry_ChD.usMinLoadZ0']
+        # print 'ChLogEntry_ChD.usMaxLoadZ0: ', logDict['ChLogEntry_ChD.usMaxLoadZ0']
+        # print 'ChLogEntry_ChC.usMinLoadZ1: ', logDict['ChLogEntry_ChC.usMinLoadZ1']
+        # print 'ChLogEntry_ChC.usMaxLoadZ1: ', logDict['ChLogEntry_ChC.usMaxLoadZ1']
+        # print 'ChLogEntry_ChD.usMinLoadZ1: ', logDict['ChLogEntry_ChD.usMinLoadZ1']
+        # print 'ChLogEntry_ChD.usMaxLoadZ1: ', logDict['ChLogEntry_ChD.usMaxLoadZ1']
+        
+        time.sleep(2)
 
